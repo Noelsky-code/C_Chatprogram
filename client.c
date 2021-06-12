@@ -14,7 +14,6 @@
 #define NAME_LEN    20
 
 char *EXIT_STRING = "exit";
-// 소켓 생성 및 서버 연결, 생성된 소켓리턴
 
 int tcp_connect(int af, char *servip, unsigned short port);
 void errquit(char *mesg) { perror(mesg); exit(1); }
@@ -67,7 +66,7 @@ int main(int argc, char *argv[]) {
 				ct = time(NULL);	//현재 시간을 받아옴
 				tm = *localtime(&ct);
 				sprintf(bufall, "[%02d:%02d:%02d]%s>%s", tm.tm_hour, tm.tm_min, tm.tm_sec, argv[3], bufmsg);//메시지에 현재시간 추가
-				if(strstr(bufmsg,"chatlog")!=NULL){//만약 chatlog를 받으려고 한다면
+				if(strstr(bufmsg,"chatlog")!=NULL){//만약 chatlog 명령어가 입력된다면
 					send(s,bufall,strlen(bufall),0);
 					int recv_len=0;
 					int totaln =0;
@@ -75,7 +74,6 @@ int main(int argc, char *argv[]) {
 					while(1){
 						memset(bufmsg,0x00,MAXLINE);
 						recv_len=recv(s,bufmsg,MAXLINE,0);
-						printf("%d\n",recv_len);
 						totaln += write(dest_fd,bufmsg,recv_len);
 						if(recv_len<MAXLINE){
 							break;
@@ -107,7 +105,7 @@ int tcp_connect(int af, char *servip, unsigned short port) {
 	// 소켓 생성
 	if ((s = socket(af, SOCK_STREAM, 0)) < 0)
 		return -1;
-	// 채팅 서버의 소켓주소 구조체 servaddr 초기화
+	
 	bzero((char *)&servaddr, sizeof(servaddr));
 	servaddr.sin_family = af;
 	inet_pton(AF_INET, servip, &servaddr.sin_addr);

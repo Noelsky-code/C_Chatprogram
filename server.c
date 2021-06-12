@@ -12,7 +12,7 @@
 #include <pthread.h>
 
 #define MAXLINE  1024
-#define MAX_SOCK 1024 // 솔라리스의 경우 64
+#define MAX_SOCK 1024 
 
 char *EXIT_STRING = "exit\n";	// 클라이언트의 종료요청 문자열
 char *START_STRING = "Connected to chat_server \n";
@@ -26,14 +26,14 @@ int listen_sock;			// 서버의 리슨 소켓
 pthread_mutex_t  mutx; // 클라이언트 추가 관련 뮤텍스락
 pthread_mutex_t mutx_send; //채팅 전송 쓰레드 뮤텍스 락 
 
-							// 새로운 채팅 참가자 처리
-void addClient(int s, struct sockaddr_in *newcliaddr);
+							
+void addClient(int s, struct sockaddr_in *newcliaddr);// 새로운 채팅 참가자 처리
 void removeClient(int s);	// 채팅 탈퇴 처리 함수
 int tcp_listen(int host, int port, int backlog); // 소켓 생성 및 listen
 void errquit(char *mesg) { perror(mesg); exit(1); }
 void log_msg(char* mslg); // 로그파일 메시지 보내기 
-int get_client(int accp_sock);
-void send_log(int accp_sock);
+int get_client(int accp_sock); // accp_sock 에 해당하는 client 찾기 
+void send_log(int accp_sock); // 로그파일 전송
 time_t ct;
 struct tm tm;
 
@@ -61,7 +61,7 @@ void *server_thread_function(void *arg) { //명령어를 처리할 스레드
 	}
 }
 
-void *msg_thread_function(char* buf,int nbyte){ // 메시지를 클라이언트 들에게 함수
+void *msg_thread_function(char* buf,int nbyte){ // 메시지를 연결된 클라이언트 들에게 전달
 	for(int i=0;i<num_user;i++){
 		send(clisock_list[i],buf,nbyte,0);
 	}
@@ -73,7 +73,7 @@ void *child_thread_function(void *arg){
 	int nbyte=0;
 	int accp_sock = *((int*)arg);
 	pthread_t a_thread;
-	send(accp_sock,START_STRING,strlen(START_STRING),0);
+	send(accp_sock,START_STRING,strlen(START_STRING),0); // greeting 메시지 전달 
 	
 	
 
@@ -85,28 +85,28 @@ void *child_thread_function(void *arg){
 	        if(FD_ISSET(accp_sock,&read_fds)){
 		     num_chat++;
 		     nbyte=recv(accp_sock,buf,MAXLINE,0);
-		     if(nbyte<=0){
+		     if(nbyte<=0){ // 연결이 끊겼을 때 
 			     pthread_mutex_lock(&mutx_send);
 			     removeClient(get_client(accp_sock));
 			     pthread_mutex_unlock(&mutx_send);
 			     break;
 		     }
 		     //buf[nbyte]=0;
-		     if(strstr(buf,EXIT_STRING)!=NULL){
+		     if(strstr(buf,EXIT_STRING)!=NULL){ // exit 명령어 받았을 때 
 			     pthread_mutex_lock(&mutx_send);
 			     removeClient(get_client(accp_sock));
 			     pthread_mutex_unlock(&mutx_send);
 			     break;
 		     }
-		     if(strstr(buf,"chatlog")!=NULL){
+		     if(strstr(buf,"chatlog")!=NULL){ // chatlog 명령어 받았을 때 
 			     pthread_mutex_lock(&mutx_send);
 			     send_log(accp_sock);
 			     pthread_mutex_unlock(&mutx_send);
 		     }
 		  
 		     pthread_mutex_lock(&mutx_send);
-		     log_msg(buf);//로그 남김 
-		     msg_thread_function(buf,nbyte);
+		     log_msg(buf);//로그 남김  
+		     msg_thread_function(buf,nbyte); // 클라이언트 들에게 메시지 전달함. 
 		     pthread_mutex_unlock(&mutx_send);
 
 	      }
@@ -135,9 +135,7 @@ int main(int argc, char *argv[]) {
 	pthread_create(&a_thread, NULL, server_thread_function, (void *)NULL);
 	pthread_detach(a_thread);
 
-
-
-	listen_sock = tcp_listen(INADDR_ANY, atoi(argv[1]), 50);
+	listen_sock = tcp_listen(INADDR_ANY, atoi(argv[1]), 50); // listen 소켓 생성 및 반환 최대 50설정 .
 	while (1) {
 	
 		accp_sock = accept(listen_sock,
@@ -146,9 +144,9 @@ int main(int argc, char *argv[]) {
 			printf("accept failed\n");
 		}
 		pthread_mutex_lock(&mutx);
-		addClient(accp_sock, &cliaddr);
+		addClient(accp_sock, &cliaddr); // 클라이언트 연결 처리 
 		pthread_mutex_unlock(&mutx);
-		pthread_create(&p_thread,NULL,child_thread_function,(void*)&accp_sock);//
+		pthread_create(&p_thread,NULL,child_thread_function,(void*)&accp_sock);// 클라이언트 담당 쓰레드 생성 
 		pthread_detach(p_thread);
 	
 	}  
@@ -195,7 +193,7 @@ void removeClient(int s) {
 	fprintf(stderr, "server>"); //커서 출력
 }
 
-// 최대 소켓번호 찾기
+
 
 
 // listen 소켓 생성 및 listen
@@ -208,7 +206,7 @@ int  tcp_listen(int host, int port, int backlog) {
 		perror("socket fail");
 		exit(1);
 	}
-	// servaddr 구조체의 내용 세팅
+
 	bzero((char *)&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(host);
@@ -226,7 +224,7 @@ void log_msg(char* msg)
 {
    FILE* fp;
 
-   fp = fopen("chatlog.log", "a+");
+   fp = fopen("chatlog.log", "a+"); // 생성모드 + append
    fprintf(fp, "%s\n", msg);
    fclose(fp);
 }
@@ -241,7 +239,7 @@ int get_client(int accp_sock){
       return ret;
 }
 
-void send_log(int accp_sock){
+void send_log(int accp_sock){ // 파일 전달. 
 	int source_fd = open("chatlog.log",O_RDONLY);
 	char buf[MAXLINE];
 	int file_read_len;
